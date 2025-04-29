@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>세종시안전체험교육원 설문</title>
+  <style>
+    body {
+      font-family: "Noto Sans KR", sans-serif;
+      background: #fffdf7;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+    header img {
+      width: 100px;
+      margin-bottom: 10px;
+    }
+    h1 {
+      color: #ff6f00;
+      font-size: 2em;
+    }
+    .date {
+      margin-bottom: 20px;
+      font-size: 1.2em;
+      color: #555;
+    }
+    .group-select button {
+      font-size: 1.2em;
+      padding: 10px 20px;
+      margin: 8px;
+      border-radius: 10px;
+      border: none;
+      background-color: #ffd54f;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .group-select button:hover {
+      background-color: #ffca28;
+    }
+    .question {
+      font-size: 2.5em;
+      font-weight: bold;
+      margin: 80px 0 10px; /* 위쪽 마진 줄임 */
+      color: #444;
+      background-color: #fbc02d;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.1);
+      display: inline-block;
+    }
+    .answer-buttons {
+      margin-top: 40px; /* 질문 아래 간격 유지 */
+    }
+    .answer-buttons button {
+      width: 180px;
+      height: 180px;
+      margin: 20px;
+      border: none;
+      border-radius: 50%;
+      font-size: 2em; /* 글자 크기 키움 */
+      font-weight: bold;
+      color: white;
+      cursor: pointer;
+      box-shadow: 4px 4px 15px rgba(0,0,0,0.2);
+      transition: transform 0.3s;
+      position: relative;
+    }
+    .answer-buttons button:hover {
+      transform: scale(1.1);
+    }
+    .green { background-color: #81c784; }
+    .yellow { background-color: #fff176; color: #333; }
+    .red { background-color: #e57373; }
+    .stats {
+      margin-top: 40px;
+      display: none;
+    }
+    table {
+      border-collapse: collapse;
+      margin: 20px auto;
+    }
+    table, th, td {
+      border: 1px solid #aaa;
+      padding: 8px 12px;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+    .hide-stats-btn, .cancel-btn {
+      margin-top: 20px;
+      font-size: 0.9em;
+      padding: 8px 16px;
+      cursor: pointer;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      background-color: #64b5f6;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="logo_placeholder.png" alt="세종시안전체험교육원 로고">
+    <h1>안전체험교육 설문조사</h1>
+    <div class="date">오늘: <span id="date"></span> (<span id="weekday"></span>)</div>
+  </header>
+
+  <div class="group-select" id="groupButtons">
+    <p style="font-size:1.2em; margin-bottom: 10px;">나는 어떤 친구일까요?</p>
+    <button onclick="selectGroup('유아')">유치원 / 어린이집</button>
+    <button onclick="selectGroup('초등')">초등학교 저학년</button>
+  </div>
+
+  <div class="question" id="questionSection" style="display:none;">
+    안전체험교육을 통해<br><strong>위험한 상황에서 어떻게 행동해야 하는지</strong><br>잘 알게 되었나요?
+    <div class="answer-buttons">
+      <button class="green" onclick="submitAnswer('O')">O</button>
+      <button class="yellow" onclick="submitAnswer('△')">△</button>
+      <button class="red" onclick="submitAnswer('X')">X</button>
+    </div>
+    <button class="cancel-btn" onclick="cancelAnswer()">응답 취소</button>
+  </div>
+
+  <button class="hide-stats-btn" onclick="requestPassword()">통계 보기</button>
+
+  <div class="stats" id="statsTable">
+    <h2>통계 - <span id="selectedGroup"></span></h2>
+    <div id="statsContent"></div>
+  </div>
+
+  <script>
+const sheetURL = "https://script.google.com/macros/s/AKfycbxTCrTrq5kk8oHQwtJpKtKcuHR8lnE8_A4bYPP7mrU1csJLPR8DfHxBCVMRQoHjqprp/exec";
+
+// 한국 시간 기준으로 날짜/요일 설정
+const now = new Date();
+const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+
+const today = kst.toISOString().slice(0, 10);
+const monthKey = today.slice(0, 7);
+const weekDay = ["일", "월", "화", "수", "목", "금", "토"];
+const dayOfWeek = kst.getUTCDay();
+
+document.getElementById("date").textContent = today;
+document.getElementById("weekday").textContent = weekDay[dayOfWeek];
+    let selectedGroup = "";
+    let lastAnswer = null;
+
+    function selectGroup(group) {
+      selectedGroup = group;
+      document.getElementById("selectedGroup").textContent = group;
+      document.getElementById("questionSection").style.display = "block";
+      document.getElementById("groupButtons").style.display = "none";
+      updateCountsFromSheet();
+    }
+
+    function submitAnswer(answer) {
+      if (!selectedGroup) {
+        alert("먼저 어떤 친구인지 선택해주세요!");
+        return;
+      }
+
+      const timestamp = new Date().toISOString();
+
+      fetch(sheetURL, {
+        method: "POST",
+        contentType: "application/json",
+        body: JSON.stringify({
+          date: today,
+          time: timestamp,
+          group: selectedGroup,
+          answer: answer
+        })
+      })
+      .then(response => response.text())
+      .then(() => {
+        lastAnswer = { answer, timestamp };
+        updateCountsFromSheet();
+      })
+      .catch(console.error);
+    }
+
+    function cancelAnswer() {
+      if (!lastAnswer) {
+        alert("취소할 응답이 없습니다!");
+        return;
+      }
+
+      fetch(sheetURL, {
+        method: "POST",
+        contentType: "application/json",
+        body: JSON.stringify({
+          date: today,
+          time: lastAnswer.timestamp,
+          group: selectedGroup,
+          answer: "취소"
+        })
+      })
+      .then(response => response.text())
+      .then(() => {
+        lastAnswer = null;
+        updateCountsFromSheet();
+      })
+      .catch(console.error);
+    }
+
+    function updateCountsFromSheet() {
+      fetch(sheetURL)
+        .then(res => res.json())
+        .then(data => {
+          const headers = data[0];
+          const rows = data.slice(1);
+          const daily = {"O": 0, "△": 0, "X": 0};
+          const monthly = {"O": 0, "△": 0, "X": 0};
+
+          rows.forEach(row => {
+            const [date, group, answer] = row;
+            if (group === selectedGroup) {
+              if (date === today) daily[answer]++;
+              if (date.startsWith(monthKey)) monthly[answer]++;
+            }
+          });
+
+          drawStatsTable(daily, monthly);
+        })
+        .catch(console.error);
+    }
+
+    function requestPassword() {
+      const pwd = prompt("관리자 비밀번호를 입력하세요:");
+      if (pwd === "0705") {
+        document.getElementById("statsTable").style.display = "block";
+        updateCountsFromSheet();
+        drawStatsTable({}, {});
+      } else {
+        alert("비밀번호가 틀렸습니다.");
+      }
+    }
+
+    function drawStatsTable(daily, monthly) {
+      const totalMonthly = Object.values(monthly).reduce((a,b)=>a+b, 0) || 1;
+
+      const makeTable = (title, data, total) => `
+        <h3>${title}</h3>
+        <table>
+          <tr><th>응답</th><th>개수</th><th>백분율</th></tr>
+          <tr><td>O</td><td>${data["O"]}</td><td>${(data["O"]/total*100).toFixed(1)}%</td></tr>
+          <tr><td>△</td><td>${data["△"]}</td><td>${(data["△"]/total*100).toFixed(1)}%</td></tr>
+          <tr><td>X</td><td>${data["X"]}</td><td>${(data["X"]/total*100).toFixed(1)}%</td></tr>
+          <tr><th>총합</th><th>${total}</th><th>100%</th></tr>
+        </table>
+      `;
+
+      document.getElementById("statsContent").innerHTML =
+        makeTable(`월별 누적 통계 (${monthKey})`, monthly, totalMonthly);
+    }
+  </script>
+</body>
+</html>
