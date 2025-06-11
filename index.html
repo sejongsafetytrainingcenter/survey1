@@ -40,7 +40,7 @@
     .question {
       font-size: 2.5em;
       font-weight: bold;
-      margin: 80px 0 10px; /* 위쪽 마진 줄임 */
+      margin: 80px 0 10px;
       color: #444;
       background-color: #fbc02d;
       padding: 20px;
@@ -49,7 +49,7 @@
       display: inline-block;
     }
     .answer-buttons {
-      margin-top: 40px; /* 질문 아래 간격 유지 */
+      margin-top: 40px;
     }
     .answer-buttons button {
       width: 180px;
@@ -57,7 +57,7 @@
       margin: 20px;
       border: none;
       border-radius: 50%;
-      font-size: 2em; /* 글자 크기 키움 */
+      font-size: 2em;
       font-weight: bold;
       color: white;
       cursor: pointer;
@@ -96,9 +96,26 @@
       color: white;
       background-color: #64b5f6;
     }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(255, 255, 255, 0.95);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3em;
+      color: #333;
+      font-weight: bold;
+      display: none;
+    }
   </style>
 </head>
 <body>
+  <div class="overlay" id="overlay">응답이 완료되었습니다</div>
   <header>
     <img src="logo_placeholder.png" alt="세종시안전체험교육원 로고">
     <h1>안전체험교육 설문조사</h1>
@@ -130,11 +147,8 @@
 
   <script>
 const sheetURL = "https://script.google.com/macros/s/AKfycbxTCrTrq5kk8oHQwtJpKtKcuHR8lnE8_A4bYPP7mrU1csJLPR8DfHxBCVMRQoHjqprp/exec";
-
-// 한국 시간 기준으로 날짜/요일 설정
 const now = new Date();
 const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-
 const today = kst.toISOString().slice(0, 10);
 const monthKey = today.slice(0, 7);
 const weekDay = ["일", "월", "화", "수", "목", "금", "토"];
@@ -142,117 +156,129 @@ const dayOfWeek = kst.getUTCDay();
 
 document.getElementById("date").textContent = today;
 document.getElementById("weekday").textContent = weekDay[dayOfWeek];
-    let selectedGroup = "";
-    let lastAnswer = null;
 
-    function selectGroup(group) {
-      selectedGroup = group;
-      document.getElementById("selectedGroup").textContent = group;
-      document.getElementById("questionSection").style.display = "block";
-      document.getElementById("groupButtons").style.display = "none";
-      updateCountsFromSheet();
-    }
+let selectedGroup = "";
+let lastAnswer = null;
 
-    function submitAnswer(answer) {
-      if (!selectedGroup) {
-        alert("먼저 어떤 친구인지 선택해주세요!");
-        return;
-      }
+function selectGroup(group) {
+  selectedGroup = group;
+  document.getElementById("selectedGroup").textContent = group;
+  document.getElementById("questionSection").style.display = "block";
+  document.getElementById("groupButtons").style.display = "none";
+  updateCountsFromSheet();
+}
 
-      const timestamp = new Date().toISOString();
+function showOverlay() {
+  const overlay = document.getElementById("overlay");
+  overlay.style.display = "flex";
+  setTimeout(() => {
+    overlay.style.display = "none";
+  }, 1000);
+}
 
-      fetch(sheetURL, {
-        method: "POST",
-        contentType: "application/json",
-        body: JSON.stringify({
-          date: today,
-          time: timestamp,
-          group: selectedGroup,
-          answer: answer
-        })
-      })
-      .then(response => response.text())
-      .then(() => {
-        lastAnswer = { answer, timestamp };
-        updateCountsFromSheet();
-      })
-      .catch(console.error);
-    }
+function submitAnswer(answer) {
+  if (!selectedGroup) {
+    alert("먼저 어떤 친구인지 선택해주세요!");
+    return;
+  }
 
-    function cancelAnswer() {
-      if (!lastAnswer) {
-        alert("취소할 응답이 없습니다!");
-        return;
-      }
+  const timestamp = new Date().toISOString();
 
-      fetch(sheetURL, {
-        method: "POST",
-        contentType: "application/json",
-        body: JSON.stringify({
-          date: today,
-          time: lastAnswer.timestamp,
-          group: selectedGroup,
-          answer: "취소"
-        })
-      })
-      .then(response => response.text())
-      .then(() => {
-        lastAnswer = null;
-        updateCountsFromSheet();
-      })
-      .catch(console.error);
-    }
+  showOverlay();
 
-    function updateCountsFromSheet() {
-      fetch(sheetURL)
-        .then(res => res.json())
-        .then(data => {
-          const headers = data[0];
-          const rows = data.slice(1);
-          const daily = {"O": 0, "△": 0, "X": 0};
-          const monthly = {"O": 0, "△": 0, "X": 0};
+  fetch(sheetURL, {
+    method: "POST",
+    contentType: "application/json",
+    body: JSON.stringify({
+      date: today,
+      time: timestamp,
+      group: selectedGroup,
+      answer: answer
+    })
+  })
+  .then(response => response.text())
+  .then(() => {
+    lastAnswer = { answer, timestamp };
+  
+    updateCountsFromSheet();
+  })
+  .catch(console.error);
+}
 
-          rows.forEach(row => {
-            const [date, group, answer] = row;
-            if (group === selectedGroup) {
-              if (date === today) daily[answer]++;
-              if (date.startsWith(monthKey)) monthly[answer]++;
-            }
-          });
+function cancelAnswer() {
+  if (!lastAnswer) {
+    alert("취소할 응답이 없습니다!");
+    return;
+  }
 
-          drawStatsTable(daily, monthly);
-        })
-        .catch(console.error);
-    }
+  fetch(sheetURL, {
+    method: "POST",
+    contentType: "application/json",
+    body: JSON.stringify({
+      date: today,
+      time: lastAnswer.timestamp,
+      group: selectedGroup,
+      answer: "취소"
+    })
+  })
+  .then(response => response.text())
+  .then(() => {
+    lastAnswer = null;
+    updateCountsFromSheet();
+  })
+  .catch(console.error);
+}
 
-    function requestPassword() {
-      const pwd = prompt("관리자 비밀번호를 입력하세요:");
-      if (pwd === "0705") {
-        document.getElementById("statsTable").style.display = "block";
-        updateCountsFromSheet();
-        drawStatsTable({}, {});
-      } else {
-        alert("비밀번호가 틀렸습니다.");
-      }
-    }
+function updateCountsFromSheet() {
+  fetch(sheetURL)
+    .then(res => res.json())
+    .then(data => {
+      const headers = data[0];
+      const rows = data.slice(1);
+      const daily = {"O": 0, "△": 0, "X": 0};
+      const monthly = {"O": 0, "△": 0, "X": 0};
 
-    function drawStatsTable(daily, monthly) {
-      const totalMonthly = Object.values(monthly).reduce((a,b)=>a+b, 0) || 1;
+      rows.forEach(row => {
+        const [date, group, answer] = row;
+        if (group === selectedGroup) {
+          if (date === today) daily[answer]++;
+          if (date.startsWith(monthKey)) monthly[answer]++;
+        }
+      });
 
-      const makeTable = (title, data, total) => `
-        <h3>${title}</h3>
-        <table>
-          <tr><th>응답</th><th>개수</th><th>백분율</th></tr>
-          <tr><td>O</td><td>${data["O"]}</td><td>${(data["O"]/total*100).toFixed(1)}%</td></tr>
-          <tr><td>△</td><td>${data["△"]}</td><td>${(data["△"]/total*100).toFixed(1)}%</td></tr>
-          <tr><td>X</td><td>${data["X"]}</td><td>${(data["X"]/total*100).toFixed(1)}%</td></tr>
-          <tr><th>총합</th><th>${total}</th><th>100%</th></tr>
-        </table>
-      `;
+      drawStatsTable(daily, monthly);
+    })
+    .catch(console.error);
+}
 
-      document.getElementById("statsContent").innerHTML =
-        makeTable(`월별 누적 통계 (${monthKey})`, monthly, totalMonthly);
-    }
+function requestPassword() {
+  const pwd = prompt("관리자 비밀번호를 입력하세요:");
+  if (pwd === "0705") {
+    document.getElementById("statsTable").style.display = "block";
+    updateCountsFromSheet();
+    drawStatsTable({}, {});
+  } else {
+    alert("비밀번호가 틀렸습니다.");
+  }
+}
+
+function drawStatsTable(daily, monthly) {
+  const totalMonthly = Object.values(monthly).reduce((a,b)=>a+b, 0) || 1;
+
+  const makeTable = (title, data, total) => `
+    <h3>${title}</h3>
+    <table>
+      <tr><th>응답</th><th>개수</th><th>백분율</th></tr>
+      <tr><td>O</td><td>${data["O"]}</td><td>${(data["O"]/total*100).toFixed(1)}%</td></tr>
+      <tr><td>△</td><td>${data["△"]}</td><td>${(data["△"]/total*100).toFixed(1)}%</td></tr>
+      <tr><td>X</td><td>${data["X"]}</td><td>${(data["X"]/total*100).toFixed(1)}%</td></tr>
+      <tr><th>총합</th><th>${total}</th><th>100%</th></tr>
+    </table>
+  `;
+
+  document.getElementById("statsContent").innerHTML =
+    makeTable(`월별 누적 통계 (${monthKey})`, monthly, totalMonthly);
+}
   </script>
 </body>
 </html>
