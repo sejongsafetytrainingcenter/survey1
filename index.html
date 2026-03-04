@@ -1,4 +1,6 @@
 <script>
+window.onload = function() {
+
 const sheetURL = "https://script.google.com/macros/s/AKfycbxZqltdENYcE6MimSCubSB-8j3SU1QsoYCSdgyPOxSrb8seerWr_6XG77IF24YgBCKj/exec";
 
 const now = new Date();
@@ -14,7 +16,7 @@ document.getElementById("weekday").textContent = weekDay[dayOfWeek];
 let selectedGroup = "";
 let lastAnswer = null;
 
-function selectGroup(group) {
+window.selectGroup = function(group) {
   selectedGroup = group;
   document.getElementById("selectedGroup").textContent = group;
   document.getElementById("questionSection").style.display = "block";
@@ -30,7 +32,7 @@ function showOverlay() {
   }, 1000);
 }
 
-function submitAnswer(answer) {
+window.submitAnswer = function(answer) {
   if (!selectedGroup) {
     alert("먼저 어떤 친구인지 선택해주세요!");
     return;
@@ -41,9 +43,7 @@ function submitAnswer(answer) {
 
   fetch(sheetURL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       date: today,
       time: timestamp,
@@ -51,7 +51,7 @@ function submitAnswer(answer) {
       answer: answer
     })
   })
-  .then(response => response.text())
+  .then(res => res.text())
   .then(() => {
     lastAnswer = { answer, timestamp };
     updateCountsFromSheet();
@@ -62,7 +62,7 @@ function submitAnswer(answer) {
   });
 }
 
-function cancelAnswer() {
+window.cancelAnswer = function() {
   if (!lastAnswer) {
     alert("취소할 응답이 없습니다!");
     return;
@@ -70,9 +70,7 @@ function cancelAnswer() {
 
   fetch(sheetURL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       date: today,
       time: lastAnswer.timestamp,
@@ -80,15 +78,12 @@ function cancelAnswer() {
       answer: "취소"
     })
   })
-  .then(response => response.text())
+  .then(res => res.text())
   .then(() => {
     lastAnswer = null;
     updateCountsFromSheet();
   })
-  .catch(err => {
-    console.error(err);
-    alert("취소 중 오류 발생");
-  });
+  .catch(console.error);
 }
 
 function updateCountsFromSheet() {
@@ -112,7 +107,7 @@ function updateCountsFromSheet() {
     .catch(console.error);
 }
 
-function requestPassword() {
+window.requestPassword = function() {
   const pwd = prompt("관리자 비밀번호를 입력하세요:");
   if (pwd === "0705") {
     document.getElementById("statsTable").style.display = "block";
@@ -125,18 +120,16 @@ function requestPassword() {
 function drawStatsTable(daily, monthly) {
   const totalMonthly = Object.values(monthly).reduce((a,b)=>a+b, 0) || 1;
 
-  const makeTable = (title, data, total) => `
-    <h3>${title}</h3>
+  document.getElementById("statsContent").innerHTML = `
+    <h3>월별 누적 통계 (${monthKey})</h3>
     <table>
       <tr><th>응답</th><th>개수</th><th>백분율</th></tr>
-      <tr><td>O</td><td>${data["O"]||0}</td><td>${((data["O"]||0)/total*100).toFixed(1)}%</td></tr>
-      <tr><td>△</td><td>${data["△"]||0}</td><td>${((data["△"]||0)/total*100).toFixed(1)}%</td></tr>
-      <tr><td>X</td><td>${data["X"]||0}</td><td>${((data["X"]||0)/total*100).toFixed(1)}%</td></tr>
-      <tr><th>총합</th><th>${total}</th><th>100%</th></tr>
+      <tr><td>O</td><td>${monthly["O"]||0}</td><td>${((monthly["O"]||0)/totalMonthly*100).toFixed(1)}%</td></tr>
+      <tr><td>△</td><td>${monthly["△"]||0}</td><td>${((monthly["△"]||0)/totalMonthly*100).toFixed(1)}%</td></tr>
+      <tr><td>X</td><td>${monthly["X"]||0}</td><td>${((monthly["X"]||0)/totalMonthly*100).toFixed(1)}%</td></tr>
     </table>
   `;
-
-  document.getElementById("statsContent").innerHTML =
-    makeTable(`월별 누적 통계 (${monthKey})`, monthly, totalMonthly);
 }
+
+};
 </script>
