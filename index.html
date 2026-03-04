@@ -1,37 +1,97 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<title>세종시안전체험교육원 설문</title>
-<style>
-body { font-family: "Noto Sans KR", sans-serif; background:#fffdf7; text-align:center; padding:20px; }
-h1 { color:#ff6f00; }
-.question { font-size:2em; margin:40px 0; }
-button { padding:10px 20px; margin:10px; font-size:1.2em; cursor:pointer; border-radius:10px; border:none; }
-.green{background:#81c784;} .yellow{background:#fff176;} .red{background:#e57373;}
-</style>
+  <meta charset="UTF-8">
+  <title>세종시안전체험교육원 설문</title>
+  <style>
+    body {
+      font-family: "Noto Sans KR", sans-serif;
+      background: #fffdf7;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+    header img { width: 100px; margin-bottom: 10px; }
+    h1 { color: #ff6f00; font-size: 2em; }
+    .date { margin-bottom: 20px; font-size: 1.2em; color: #555; }
+    .group-select button {
+      font-size: 1.2em;
+      padding: 10px 20px;
+      margin: 8px;
+      border-radius: 10px;
+      border: none;
+      background-color: #ffd54f;
+      cursor: pointer;
+    }
+    .question {
+      font-size: 2.5em;
+      font-weight: bold;
+      margin: 80px 0 10px;
+      color: #444;
+      background-color: #fbc02d;
+      padding: 20px;
+      border-radius: 15px;
+    }
+    .answer-buttons button {
+      width: 180px;
+      height: 180px;
+      margin: 20px;
+      border: none;
+      border-radius: 50%;
+      font-size: 2em;
+      font-weight: bold;
+      color: white;
+      cursor: pointer;
+    }
+    .green { background-color: #81c784; }
+    .yellow { background-color: #fff176; color: #333; }
+    .red { background-color: #e57373; }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(255,255,255,0.95);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3em;
+      font-weight: bold;
+      display: none;
+    }
+  </style>
 </head>
 <body>
 
-<h1>안전체험교육 설문조사</h1>
-<p>오늘: <span id="date"></span></p>
+<div class="overlay" id="overlay">응답이 완료되었습니다</div>
 
-<div>
-<button onclick="selectGroup('유아')">유치원 / 어린이집</button>
-<button onclick="selectGroup('초등')">초등학교 저학년</button>
+<header>
+  <img src="logo_placeholder.png">
+  <h1>안전체험교육 설문조사</h1>
+  <div class="date">오늘: <span id="date"></span></div>
+</header>
+
+<div class="group-select" id="groupButtons">
+  <p style="font-size:1.2em;">나는 어떤 친구일까요?</p>
+  <button onclick="selectGroup('유아')">유치원 / 어린이집</button>
+  <button onclick="selectGroup('초등')">초등학교 저학년</button>
 </div>
 
-<div id="question" style="display:none;">
-<p class="question">교육을 통해 위험 상황 대처 방법을 잘 알게 되었나요?</p>
-<button class="green" onclick="submitAnswer('O')">O</button>
-<button class="yellow" onclick="submitAnswer('△')">△</button>
-<button class="red" onclick="submitAnswer('X')">X</button>
-<br>
-<button onclick="cancelAnswer()">응답 취소</button>
+<div class="question" id="questionSection" style="display:none;">
+  안전체험교육을 통해<br>
+  <strong>위험한 상황에서 어떻게 행동해야 하는지</strong><br>
+  잘 알게 되었나요?
+  <div class="answer-buttons">
+    <button class="green" onclick="submitAnswer('O')">O</button>
+    <button class="yellow" onclick="submitAnswer('△')">△</button>
+    <button class="red" onclick="submitAnswer('X')">X</button>
+  </div>
+  <button onclick="cancelAnswer()">응답 취소</button>
 </div>
 
 <script>
-
 const sheetURL = "https://script.google.com/macros/s/AKfycbzUDseeLHV-8cgOmxeGKamqdWelBx7duH7s3d2Ned8_4paLZ6L5bEF3qjRk5ZyYZg4/exec";
 
 const today = new Date().toISOString().slice(0,10);
@@ -42,13 +102,20 @@ let lastAnswer = null;
 
 function selectGroup(group){
   selectedGroup = group;
-  document.getElementById("question").style.display="block";
+  document.getElementById("questionSection").style.display="block";
+  document.getElementById("groupButtons").style.display="none";
+}
+
+function showOverlay(){
+  const overlay=document.getElementById("overlay");
+  overlay.style.display="flex";
+  setTimeout(()=>{ overlay.style.display="none"; },1000);
 }
 
 function submitAnswer(answer){
 
   if(!selectedGroup){
-    alert("그룹을 선택하세요");
+    alert("먼저 그룹을 선택해주세요!");
     return;
   }
 
@@ -68,7 +135,7 @@ function submitAnswer(answer){
   .then(data=>{
     console.log(data);
     lastAnswer = {answer:answer};
-    alert("저장되었습니다");
+    showOverlay();
   })
   .catch(err=>console.error(err));
 }
@@ -76,7 +143,7 @@ function submitAnswer(answer){
 function cancelAnswer(){
 
   if(!lastAnswer){
-    alert("취소할 응답이 없습니다");
+    alert("취소할 응답이 없습니다!");
     return;
   }
 
@@ -93,12 +160,12 @@ function cancelAnswer(){
   .then(res=>res.text())
   .then(data=>{
     console.log(data);
-    alert("삭제되었습니다");
+    alert("삭제되었습니다.");
     lastAnswer=null;
   })
   .catch(err=>console.error(err));
 }
-
 </script>
+
 </body>
 </html>
